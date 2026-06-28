@@ -30,7 +30,7 @@ from src.schemas.models import (
     RelevanceScorerOutput,
     RetryPlannerOutput,
 )
-from src.graph.state import AgentState
+from src.schemas.state import AgentState
 
 
 # ──────────────────────────────────────────────────────────────
