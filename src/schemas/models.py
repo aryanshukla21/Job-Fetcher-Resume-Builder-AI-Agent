@@ -69,6 +69,16 @@ class UserConfig(BaseModel):
     This is the single source of truth for all search and generation parameters.
     """
 
+    github_username: str = Field(
+        ...,
+        description="GitHub username for fetching projects dynamically. Never hardcode this in nodes."
+    )
+
+    base_resume_path: str = Field(
+        ...,
+        description="Absolute path to the base .docx resume for structural parsing."
+    )
+
     target_roles: list[str] = Field(
         ...,
         description=(

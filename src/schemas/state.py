@@ -1,6 +1,4 @@
 """
-graph/state.py
-==============
 LangGraph AgentState definition.
 
 Design principles:
@@ -27,6 +25,7 @@ from src.schemas.models import (
     RetryPlannerOutput,
     UserConfig,
     VerifiedContext,
+    ContextAssemblerOutput,
 )
 
 
@@ -96,9 +95,17 @@ def drafts_reducer(current: list[ResumeDraft] | None, update: list[ResumeDraft])
     - Pool is always sorted by ats_score descending so select_top2 can simply
       take pool[:2] without re-sorting.
     - Draft pool is scoped to current_job_id — it is CLEARED when a new job
-      starts (handled in spawn_resume_worker via clear_draft_pool node).
+      starts.
     """
+    if not update:
+        return current or []
+
     existing = current or []
+    
+    # If the new draft belongs to a different job, purge the old pool instantly
+    if existing and existing[0].job_id != update[0].job_id:
+        existing = []
+
     existing_map: dict[str, ResumeDraft] = {d.draft_id: d for d in existing}
 
     for draft in update:
@@ -320,4 +327,26 @@ class AgentState(TypedDict):
 
     Last error message if a node failed. Used for graceful recovery and
     displayed in the LangSmith trace for debugging. None in normal operation.
+    """
+
+    # ── 14. Transient Raw Context ─────────────────────────────────
+    _raw_context: Optional[dict]
+    """
+    WRITTEN BY: context_builder
+    READ BY:    store_context
+    REDUCER:    none (last-write-wins)
+    
+    Holds unvalidated JSON payloads from parsing operations. 
+    Cleared by store_context to prevent checkpoint bloat.
+    """
+
+    # ── 15. Transient Assembler Output ────────────────────────────
+    _assembler_output: Optional[ContextAssemblerOutput]
+    """
+    WRITTEN BY: context_assembler
+    READ BY:    resume_drafter
+    REDUCER:    none (last-write-wins)
+    
+    Holds strategy payload (priority skills, keyword gaps) for the current 
+    drafting iteration. Cleared by resume_drafter after consumption.
     """
