@@ -20,7 +20,7 @@ Anti-hallucination role of descriptions:
 
 from __future__ import annotations
 
-from langchain_anthropic import ChatAnthropic
+from src.llms.factory import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 
 from src.schemas.models import (
@@ -38,14 +38,9 @@ from src.schemas.state import AgentState
 # One model instance per tier — reuse across nodes of the same tier.
 # ──────────────────────────────────────────────────────────────
 
-# Tier 1 — Fast, cheap. For classification and scoring tasks.
-haiku = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0)
-
-# Tier 2 — Balanced. For context assembly and keyword analysis.
-sonnet = ChatAnthropic(model="claude-sonnet-4-6", temperature=0.1)
-
-# Tier 3 — Most capable. For resume drafting and retry planning.
-opus = ChatAnthropic(model="claude-opus-4-6", temperature=0.2)
+tier1_llm = get_llm(tier=1, temperature=0.0)    # Fast, cheap (Scoring)
+tier2_llm = get_llm(tier=2, temperature=0.1)    # Balanced (Context assembly)
+tier3_llm = get_llm(tier=3, temperature=0.2)    # Capable (Drafting, Planning)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -76,7 +71,7 @@ JOB DESCRIPTION:
 
 Score this job against the candidate profile."""),
     ])
-    | haiku.with_structured_output(RelevanceScorerOutput)
+    | tier1_llm.with_structured_output(RelevanceScorerOutput)
 )
 
 
@@ -149,7 +144,7 @@ RETRY DIRECTIVES (if any): {retry_directives}
 
 Produce the context assembly for this resume generation iteration."""),
     ])
-    | sonnet.with_structured_output(ContextAssemblerOutput)
+    | tier2_llm.with_structured_output(ContextAssemblerOutput)
 )
 
 
@@ -263,7 +258,7 @@ Priority skills to lead with: {priority_skills}
 
 Generate the complete resume as structured output."""),
     ])
-    | opus.with_structured_output(ResumeDraftContent)
+    | tier3_llm.with_structured_output(ResumeDraftContent)
 )
 
 
@@ -352,7 +347,7 @@ JOB DESCRIPTION:
 
 Analyse both drafts and produce improvement directives for the next loop."""),
     ])
-    | opus.with_structured_output(RetryPlannerOutput)
+    | tier3_llm.with_structured_output(RetryPlannerOutput)
 )
 
 
